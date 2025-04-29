@@ -1,115 +1,189 @@
-# Multiuser Chatroom Application
+# NBA Moneyline Assistant
 
-![Chatroom](https://img.shields.io/badge/Chatroom-Java_Play_React-blue.svg)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)
-![React](https://img.shields.io/badge/React-Latest-blue.svg)
-![sbt](https://img.shields.io/badge/sbt-1.1+-blue.svg)
-![Java](https://img.shields.io/badge/Java-11+-blue.svg)
+**A web-based assistant for data-driven NBA moneyline betting, featuring interactive dashboards, raw-SQL analytics, and a full CRUD front-end.**
 
-## Project Overview
+---
 
-This project is a full-stack multiuser chatroom application built using the **Java Play Framework** for the backend and **React.js** for the frontend. It uses a **MySQL** database for data storage. The application allows multiple users to register, log in, and chat in real-time.
+## 🚀 Features
 
-## Tools and Technologies
+- **User Authentication**  
+  JWT-based signup/login (no passwords stored on client, secure endpoints via custom `AuthenticatedAction`).
 
-### Backend
-- **Java Play Framework**: 3.0.3
-- **MySQL**: 8
-- **sbt**: 1.1
-- **Scala**: Compatible with cross versions 2.13.14 and 3.3.3
+- **Place & Manage Bets (CRUD)**  
+  - **Create**: place real bets against historical or live odds.  
+  - **Read**: view “My Bets” with edit/delete actions.  
+  - **Update**: adjust bet amount & predicted outcome.  
+  - **Delete**: remove a bet.  
 
-### Frontend
-- **React.js**: Latest version (as of June 2024)
+- **Simulated Bets**  
+  “Dry-run” mode uses the same UI but doesn’t commit to the database—perfect for strategy testing.
 
-## Project Setup and Usage
+- **Advanced Analytics (Raw SQL)**  
+  - **Upsets Leaderboard**: teams most often winning as underdogs.  
+  - **Win Rates**: teams ranked by actual win percentage + average pre-game moneyline.  
+  - **Underdog Wins**: list of games where the underdog prevailed.  
+  - **Most Active Bettors**: real-time leaderboard of users by number of bets.  
 
-### Prerequisites
-- **Java**: JDK 11 or higher
-- **Node.js**: Latest LTS version
-- **MySQL**: Version 8
-- **sbt**: Version 1.1 or higher
+- **Interactive Data Visualization**  
+  - **Line Charts** (via `react-chartjs-2` & Chart.js) on Dashboard:  
+    - User’s historical bet performance (spending vs returns over time).  
+    - Hover tooltips for per-bet details (game, stake, outcome).  
 
-### Clone the Repository
-```bash
-git clone https://github.com/UttkarshSingh1738/Chatroom-Java-Play-MySQL-React.git
-cd Chatroom-Java-Play-MySQL-React
+- **Keyword Search & Pagination**  
+  - Filter games by team name.  
+  - Infinite scroll / “Load more” for the most recent 10 games.  
+
+- **Database-Backed Triggers & Stored Procedures**  
+  - **`PickAudit` trigger** logs every new bet for auditing & “Most Active Bettors”.  
+  - **`PlaceBet_SAFE`** stored procedure wraps insert + audit in a transaction (ACID guarantees).
+
+---
+
+## 🛠 Technology Stack
+
+| Layer           | Tech / Libs                                              |
+| --------------- | -------------------------------------------------------- |
+| **Backend**     | Play Framework (Java 2.8), Ebean ORM (for model mapping), raw-SQL via `io.ebean.DB.sqlQuery` & `CallableSql` |
+| **Database**    | MySQL (on Google Cloud SQL) with: <br> • Tables: `Users`, `Games`, `Betting_Odds`, `Picks`, `PickAudit` <br> • Stored procedures, transactions, triggers for audit & safety |
+| **Frontend**    | React 17+, React Router v6, Axios for HTTP, Bootstrap 5, Chart.js / react-chartjs-2 for graphs |
+| **Auth**        | JWT (`TokenService`) + custom Play `AuthenticatedAction` |
+| **Deployment**  | Backend: `sbt run` (→ `localhost:9000`) <br> Frontend: `npm start` in `ui/` (→ `localhost:3000`) |
+
+---
+
+## 📦 Installation & Setup
+
+1. **Clone & configure**  
+   ```bash
+   git clone https://github.com/yourusername/nba-moneyline-assistant.git
+   cd nba-moneyline-assistant
+   ```
+
+2. **Backend**  
+   Ensure your `conf/application.conf` points at your Google Cloud SQL instance:
+   ```properties
+   db.default.driver = "com.mysql.cj.jdbc.Driver"
+   db.default.url = "jdbc:mysql://<GCP_HOST>:3306/your_db"
+   db.default.username = "bolt_dev"
+   db.default.password = "bolt123"
+   ```
+   Run evolutions only if you need local migrations; otherwise, your GCP schema must already contain all tables, procedures & triggers.
+
+   Start the server:
+   ```bash
+   sbt run
+   ```
+   Backend listens on `http://localhost:9000`.
+
+3. **Frontend**  
+   ```bash
+   cd ui
+   npm install
+   npm start
+   ```
+   React dev server runs on `http://localhost:3000` and proxies `/api/**` calls to Play.
+
+4. **⚙️ Configuration**  
+   - **CORS & Proxy**: `ui/package.json` has `"proxy": "http://localhost:9000"`.  
+   - **JWT Secret**: set `play.http.secret.key` in `application.conf` (or environment) for production.  
+   - **Environments**: adjust `db.default.url` for dev vs prod.
+
+---
+
+## 🧩 Database Overview
+
+### Users & Profiles
+```sql
+CREATE TABLE Users (
+  user_id       INT AUTO_INCREMENT PRIMARY KEY,
+  username      VARCHAR(50) NOT NULL UNIQUE,
+  email         VARCHAR(100) NOT NULL UNIQUE,
+  created_time  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-### Backend Setup
+### Games & Odds
+```sql
+CREATE TABLE Games (
+  game_id          INT PRIMARY KEY,
+  team1_id         INT,
+  team2_id         INT,
+  winning_team_id  INT,
+  game_date        DATETIME
+);
 
-**Database Configuration**:
-   Configure your MySQL database in the `application.conf` file located in the `conf/` directory:
-   ```conf
-   db.default.driver=com.mysql.cj.jdbc.Driver
-   db.default.url="jdbc:mysql://localhost:3306/chatdb"
-   db.default.username="yourusername"
-   db.default.password="yourpassword"
+CREATE TABLE Betting_Odds (
+  odds_id          INT AUTO_INCREMENT PRIMARY KEY,
+  game_id          INT,
+  team1_moneyline  DECIMAL(6,2),
+  team2_moneyline  DECIMAL(6,2),
+  team1_spread     DECIMAL(4,2),
+  team2_spread     DECIMAL(4,2),
+  team1_total      VARCHAR(10),
+  team2_total      VARCHAR(10),
+  FOREIGN KEY (game_id) REFERENCES Games(game_id)
+);
 ```
 
-### Frontend Setup
+### Bets & Audit
+```sql
+CREATE TABLE Picks (
+  pick_id           INT AUTO_INCREMENT PRIMARY KEY,
+  user_id           INT,
+  game_id           INT,
+  predicted_outcome VARCHAR(64),
+  bet_amount        DECIMAL(10,2),
+  FOREIGN KEY (user_id) REFERENCES Users(user_id),
+  FOREIGN KEY (game_id) REFERENCES Games(game_id)
+);
 
-1. **Navigate to the Frontend Directory:**:
-```bash
-cd frontend
+CREATE TABLE PickAudit (
+  audit_id    INT AUTO_INCREMENT PRIMARY KEY,
+  pick_id     INT,
+  user_id     INT,
+  game_id     INT,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
-2. **Install Dependencies**:
-```bash
-npm install
+Trigger fires on `INSERT` into `Picks` → logs into `PickAudit`.
+
+---
+
+## 🔄 Advanced SQL
+
+### Upsets
+```sql
+SELECT t.team_name, COUNT(*) AS upsets
+  FROM Games g
+  JOIN Betting_Odds bo ON g.game_id = bo.game_id
+  JOIN Teams t ON g.winning_team_id = t.team_id
+ WHERE (g.winning_team_id = g.team1_id AND bo.team1_moneyline > bo.team2_moneyline)
+    OR (g.winning_team_id = g.team2_id AND bo.team2_moneyline > bo.team1_moneyline)
+ GROUP BY t.team_name
+ ORDER BY upsets DESC;
 ```
 
-### Proxy Configuration
-The React development server is configured to proxy API requests to the Play Framework backend running on port 9000. This is set up in the package.json file of the React project:
-
-```json
-{
-  "proxy": "http://localhost:9000",
-  ...
-}
+### Stored Procedure
+```sql
+DELIMITER $$
+CREATE PROCEDURE PlaceBet_SAFE(
+  IN  p_user_id INT,
+  IN  p_game_id INT,
+  IN  p_outcome VARCHAR(64),
+  IN  p_amount DECIMAL(10,2),
+  OUT p_new_pick INT
+)
+BEGIN
+  START TRANSACTION;
+  INSERT INTO Picks(user_id, game_id, predicted_outcome, bet_amount)
+    VALUES (p_user_id, p_game_id, p_outcome, p_amount);
+  SET p_new_pick = LAST_INSERT_ID();
+  -- audit trigger will fire automatically
+  COMMIT;
+END $$
+DELIMITER ;
 ```
-## Application Usage
 
-### Access the Application
-- Open your browser and navigate to `http://localhost:3000`. This will load the React frontend.
+---
 
-### Backend API
-- The backend runs on `http://localhost:9000` in the background, handling API requests.
-
-## Application Features
-
-- **User Registration**: New users can register by providing a username and password.
-- **User Login**: Registered users can log in with their credentials.
-- **Chat Functionality**: Logged-in users can send and receive messages in real-time.
-
-## Development Notes
-
-### Run Backend and Frontend Concurrently
-- Use `sbt run` to start the Play Framework backend. The frontend is served via React's development server on port 3000, with API requests proxied to the backend running on port 9000.
-
-### Database Migrations
-- Ensure MySQL is running and configured correctly in `application.conf`. Use the Play Framework's migration tool to apply any database changes.
-
-## Dependencies
-
-### Backend (Play Framework)
-- `play-ebean`
-- `mysql-connector-java`
-- `play-json`
-- `play-i18n`
-- `play-guice`
-
-### Frontend (React.js)
-- `react`
-- `react-dom`
-- `react-scripts`
-
-## Future Improvements
-
-- **Real-time Notifications**: Implement real-time notifications using WebSockets.
-- **User Profiles**: Add functionality for user profiles with custom avatars.
-- **Message History**: Implement message history with pagination.
-
-## Contributing
-
-Feel free to submit issues or pull requests. For major changes, please open an issue first to discuss what you would like to change.
-
-
+© 2024 NBA Moneyline Assistant | All rights reserved
