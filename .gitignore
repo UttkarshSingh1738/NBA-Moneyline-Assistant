@@ -1,0 +1,33 @@
+/project/target
+/.bsp
+/target
+logs/application.log
+/target
+
+# Node.js
+node_modules/
+/ui/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# React build output
+build/
+dist/
+
+# Play Framework / SBT
+target/
+project/target/
+project/project/
+logs/
+*.lock
+.history/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,52 @@
+# NBA Moneyline Assistant Routes
+# nocsrf is used for API endpoints in development
+
+# Authentication endpoints
++nocsrf
+POST    /api/save                   controllers.AuthController.save(request: Request)
++nocsrf
+POST    /api/authenticate           controllers.AuthController.authenticate(request: Request)
++nocsrf
+GET     /api/logout                 controllers.AuthController.logout(request: Request)
++nocsrf
+GET   /api/users/me                 controllers.UserController.me(request: Request)
+
+# Advanced betting queries (e.g., teams ranked by betting upsets)
++nocsrf
+GET   /api/advanced/upsets     controllers.AdvancedQueryController.getUpsetTeams(request: Request)
++nocsrf
+GET   /api/advanced/winRates   controllers.AdvancedQueryController.getTeamWinRates(request: Request)
++nocsrf
+GET   /api/advanced/underdogs  controllers.AdvancedQueryController.getUnderdogWins(request: Request)
++nocsrf
+GET   /advancedQuery/upsets    controllers.AdvancedQueryController.getUpsetTeams(request: Request)
++nocsrf
+GET   /advancedQuery/active-bettors   controllers.AdvancedQueryController.getActiveBettors(request: Request)
++nocsrf
+GET   /api/bets/history   controllers.AdvancedQueryController.getUserBetHistory(request: Request)
+
+
+# Games listing & search
++nocsrf
+GET     /api/games                controllers.GameController.list(request: Request)
++nocsrf
+GET     /api/games/:gameId/odds   controllers.GameController.listByGame(gameId: Long)
+
+
+# Betting endpoints (placing a bet)
++nocsrf
+POST    /api/bets/place             controllers.BettingController.placeBetSafe(request: Request)
++nocsrf
+POST    /api/bets/simulate      controllers.BettingController.simulateBet(request: Request)
+
+# Picks CRUD
++nocsrf
+GET     /api/picks                controllers.PickController.list(request: Request)
++nocsrf
+POST    /api/picks/update         controllers.PickController.update(request: Request)
++nocsrf
+POST    /api/picks/delete         controllers.PickController.delete(request: Request)
+
+
+# Static assets
+GET     /assets/*file               controllers.Assets.versioned(file)
